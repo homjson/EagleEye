@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/usr/libexec/java_home -V)",
+      "Read(//Users/hom/Library/Android/sdk/**)",
+      "Read(//opt/**)",
+      "Read(//usr/local/**)",
+      "Bash(brew install *)",
+      "Bash(adb devices *)",
+      "Bash(adb install *)",
+      "Bash(adb shell *)",
+      "Bash(adb logcat *)",
+      "Bash(./gradlew installDebug *)",
+      "Bash(/opt/homebrew/opt/openjdk/bin/java -XshowSettings:properties -version)",
+      "Bash(export JAVA_HOME=$\\(/opt/homebrew/opt/openjdk/bin/java -XshowSettings:properties -version 2>&1)",
+      "Bash(export JAVA_HOME=\"/Applications/Android Studio.app/Contents/jbr/Contents/Home\")",
+      "Bash(./gradlew assembleDebug *)",
+      "Bash(export PATH=\"$JAVA_HOME/bin:$PATH\")",
+      "Bash(gh auth *)",
+      "Bash(git init *)",
+      "Bash(gh repo *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
