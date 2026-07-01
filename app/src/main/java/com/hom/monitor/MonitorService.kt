@@ -324,10 +324,10 @@ class MonitorService : Service() {
                                 "CPU: %.1f%%\n内存: %.1f%%\n$freqText\n$tempText".format(cpu.totalUsage, mem.usagePercent))
                         }
                         if (MonitorService._floatingState.value.processVisible) {
-                            val top3 = processes.sortedByDescending { it.cpuUsage }.take(3).joinToString("\n") { p ->
+                            val top10 = processes.sortedByDescending { it.cpuUsage }.take(10).joinToString("\n") { p ->
                                 "%.1f%% %s".format(p.cpuUsage, p.name.take(22))
                             }.ifEmpty { "无数据" }
-                            updateFloatingWindow(FloatingType.PROCESS, top3)
+                            updateFloatingWindow(FloatingType.PROCESS, top10)
                         }
                     }
                 } catch (_: Exception) { }
