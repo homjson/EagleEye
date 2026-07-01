@@ -11,12 +11,14 @@ import com.hom.monitor.MonitorService
 import com.hom.monitor.ui.components.SettingsDialog
 import com.hom.monitor.ui.load.LoadMonitorScreen
 import com.hom.monitor.ui.process.ProcessDetailScreen
+import com.hom.monitor.ui.about.AboutScreen
 import com.hom.monitor.ui.process.ProcessMonitorScreen
 import com.hom.monitor.ui.process.ProcessMonitorViewModel
 
 enum class MonitorTab(val label: String, val index: Int) {
     LOAD("负载", 0),
-    PROCESS("进程", 1)
+    PROCESS("进程", 1),
+    ABOUT("关于", 2)
 }
 
 @Composable
@@ -68,6 +70,7 @@ fun MonitorPager(processViewModel: ProcessMonitorViewModel) {
                                 when (tab) {
                                     MonitorTab.LOAD -> Text("📊", style = MaterialTheme.typography.titleSmall)
                                     MonitorTab.PROCESS -> Text("📋", style = MaterialTheme.typography.titleSmall)
+                                    MonitorTab.ABOUT -> Text("ℹ️", style = MaterialTheme.typography.titleSmall)
                                 }
                             },
                             label = {
@@ -112,6 +115,7 @@ fun MonitorPager(processViewModel: ProcessMonitorViewModel) {
                                 showDetail = true
                             }
                         )
+                        MonitorTab.ABOUT -> AboutScreen()
                     }
                 }
             }
