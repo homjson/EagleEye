@@ -14,3 +14,6 @@ local.properties
 *.aab
 *.jks
 *.keystore
+.claude/
+.agents/
+skills-lock.json
