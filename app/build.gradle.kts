@@ -1,7 +1,13 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreExists = keystorePropertiesFile.exists()
 
 android {
     namespace = "com.hom.monitor"
@@ -15,9 +21,26 @@ android {
         versionName = "1.0.0"
     }
 
+    signingConfigs {
+        if (keystoreExists) {
+            create("release") {
+                val props = Properties().apply {
+                    load(FileInputStream(keystorePropertiesFile))
+                }
+                storeFile = rootProject.file(props["storeFile"] as String)
+                storePassword = props["storePassword"] as String
+                keyAlias = props["keyAlias"] as String
+                keyPassword = props["keyPassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            isMinifyEnabled = true
+            if (keystoreExists) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
