@@ -87,6 +87,33 @@ object ProcParser {
         )
     }
 
+    /** 读取电池温度和 CPU 温度 */
+    suspend fun parseThermalInfo(): ThermalInfo = withContext(Dispatchers.IO) {
+        // 电池温度: /sys/class/power_supply/battery/temp，单位 0.1℃
+        val batteryTemp = try {
+            val raw = RootHelper.readFileWithFallback("/sys/class/power_supply/battery/temp").trim()
+            raw.toFloatOrNull()?.div(10f) ?: -1f
+        } catch (_: Exception) { -1f }
+
+        // CPU 温度: 遍历 thermal_zone，找 type 含 "cpu" 的最高温度
+        val cpuTemp = try {
+            val zones = RootHelper.execCmd(
+                "cat /sys/class/thermal/thermal_zone*/type 2>/dev/null"
+            ).lines().filter { it.isNotBlank() }
+            val temps = RootHelper.execCmd(
+                "cat /sys/class/thermal/thermal_zone*/temp 2>/dev/null"
+            ).lines().filter { it.isNotBlank() }
+
+            zones.mapIndexedNotNull { i, type ->
+                if ("cpu" in type.lowercase()) {
+                    temps.getOrNull(i)?.trim()?.toFloatOrNull()?.div(1000f)
+                } else null
+            }.maxOrNull() ?: -1f
+        } catch (_: Exception) { -1f }
+
+        ThermalInfo(batteryTemp = batteryTemp, cpuTemp = cpuTemp)
+    }
+
     /** 使用 ps 命令获取进程列表（快，单次 Root 调用） */
     suspend fun parseProcessList(): List<ProcessInfo> = withContext(Dispatchers.IO) {
         try {

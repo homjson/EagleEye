@@ -20,8 +20,10 @@ import androidx.core.app.NotificationCompat
 import com.hom.monitor.data.model.CpuLoad
 import com.hom.monitor.data.model.MemoryInfo
 import com.hom.monitor.data.model.ProcessInfo
+import com.hom.monitor.data.model.ThermalInfo
 import com.hom.monitor.data.model.ThreadInfo
 
+import com.hom.monitor.data.parser.ProcParser
 import com.hom.monitor.data.repository.LoadRepository
 import com.hom.monitor.data.repository.ProcessRepository
 import com.hom.monitor.data.repository.ThreadRepository
@@ -52,9 +54,9 @@ class MonitorService : Service() {
 
     private val floatViews = mutableMapOf<FloatingType, View>()
     private val floatArgs = mapOf(
-        FloatingType.THREAD to WindowArgs(20, 200),
-        FloatingType.LOAD to WindowArgs(20, 340),
-        FloatingType.PROCESS to WindowArgs(20, 480)
+        FloatingType.THREAD to WindowArgs(20, 200, 220),
+        FloatingType.LOAD to WindowArgs(20, 340, 100),
+        FloatingType.PROCESS to WindowArgs(20, 480, 220)
     )
 
     companion object {
@@ -76,6 +78,9 @@ class MonitorService : Service() {
 
         private val _processList = MutableStateFlow<List<ProcessInfo>>(emptyList())
         val processList: StateFlow<List<ProcessInfo>> = _processList.asStateFlow()
+
+        private val _thermalInfo = MutableStateFlow<ThermalInfo?>(null)
+        val thermalInfo: StateFlow<ThermalInfo?> = _thermalInfo.asStateFlow()
 
         private val _floatingState = MutableStateFlow(FloatingState())
         val floatingState: StateFlow<FloatingState> = _floatingState.asStateFlow()
@@ -142,6 +147,7 @@ class MonitorService : Service() {
     private fun createFloatingWindow(type: FloatingType) {
         if (floatViews.containsKey(type)) return
 
+        val args = floatArgs[type] ?: return
         val density = resources.displayMetrics.density
         val bg = GradientDrawable().apply {
             setColor(0xCC1A1A2E.toInt())
@@ -153,7 +159,7 @@ class MonitorService : Service() {
             gravity = Gravity.START
             setPadding((12 * density).toInt(), (6 * density).toInt(), (12 * density).toInt(), (6 * density).toInt())
             background = bg
-            minimumWidth = (300 * density).toInt()
+            minimumWidth = (args.minWidth * density).toInt()
         }
 
         val titleText = when (type) {
@@ -186,8 +192,6 @@ class MonitorService : Service() {
         }
         container.addView(contentView)
         container.tag = contentView
-
-        val args = floatArgs[type] ?: return
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -280,8 +284,10 @@ class MonitorService : Service() {
                     // 负载数据 — 无需历史差值，立即发布
                     val cpu = loadRepo.getCpuLoad()
                     val mem = loadRepo.getMemoryInfo()
+                    val thermal = ProcParser.parseThermalInfo()
                     MonitorService._cpuLoad.value = cpu
                     MonitorService._memoryInfo.value = mem
+                    MonitorService._thermalInfo.value = thermal
 
                     // 进程数据 — 首轮采样作为基准不发布，次轮开始有 CPU 差值后再发布
                     val processes = processRepo.getProcessList()
@@ -295,15 +301,27 @@ class MonitorService : Service() {
                     withContext(Dispatchers.Main) {
                         if (MonitorService._floatingState.value.threadVisible) {
                             val allThreads = threads.take(10).joinToString("\n") { t ->
-                                "%.1f%%   %s   [%s]".format(t.cpuUsage, t.name,
-                                    if (t.cpuCore >= 0) "CPU${t.cpuCore}" else "-")
+                                val coreLabel = if (t.cpuCore >= 0) "CPU%-2d".format(t.cpuCore) else " - "
+                                "%5.1f%%  %s  %s".format(t.cpuUsage, coreLabel, t.name)
                             }.ifBlank { "无数据" }
                             val pkgName = threadRepo.foregroundAppName.ifBlank { "前台APP" }
                             updateFloatingWindow(FloatingType.THREAD, "$pkgName\n$allThreads")
                         }
                         if (MonitorService._floatingState.value.loadVisible) {
+                            val freqText = cpu.cores.filter { it.online }.joinToString("\n") { c ->
+                                val ghz = c.frequency / 1000000f
+                                "cpu%d: %s".format(c.index,
+                                    if (c.frequency > 0) "%.1fGHz".format(ghz) else "-")
+                            }
+                            val tempText = buildString {
+                                if (thermal.cpuTemp > 0) append("CPU: %.0f℃".format(thermal.cpuTemp))
+                                if (thermal.batteryTemp > 0) {
+                                    if (isNotEmpty()) append("\n")
+                                    append("电池: %.0f℃".format(thermal.batteryTemp))
+                                }
+                            }
                             updateFloatingWindow(FloatingType.LOAD,
-                                "CPU: %.1f%% | 内存: %.1f%%".format(cpu.totalUsage, mem.usagePercent))
+                                "CPU: %.1f%%\n内存: %.1f%%\n$freqText\n$tempText".format(cpu.totalUsage, mem.usagePercent))
                         }
                         if (MonitorService._floatingState.value.processVisible) {
                             val top3 = processes.sortedByDescending { it.cpuUsage }.take(3).joinToString("\n") { p ->
@@ -342,5 +360,5 @@ class MonitorService : Service() {
         )
         .build()
 
-    private data class WindowArgs(val x: Int, val y: Int)
+    private data class WindowArgs(val x: Int, val y: Int, val minWidth: Int)
 }
