@@ -6,13 +6,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hom.monitor.data.model.MemoryInfo
 
-/**
- * 内存信息展示组件
- */
 @Composable
 fun MemoryBar(memory: MemoryInfo) {
     Card(
@@ -29,15 +27,18 @@ fun MemoryBar(memory: MemoryInfo) {
                 Text(
                     "%.1f%%".format(memory.usagePercent),
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = if (memory.usagePercent > 80f) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.primary
+                    fontSize = 18.sp,
+                    color = when {
+                        memory.usagePercent > 80f -> MaterialTheme.colorScheme.error
+                        memory.usagePercent > 60f -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.primary
+                    }
                 )
             }
 
             Spacer(modifier = Modifier.height(6.dp))
 
-            // 使用率进度条
+            // 进度条
             LinearProgressIndicator(
                 progress = { memory.usagePercent / 100f },
                 modifier = Modifier.fillMaxWidth().height(8.dp),
@@ -48,49 +49,52 @@ fun MemoryBar(memory: MemoryInfo) {
                 },
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            // 详细数据行
+            // 已用 / 总计
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                MemLabel("总计", formatSize(memory.totalMem))
-                MemLabel("已用", formatSize(memory.usedMem))
-                MemLabel("可用", formatSize(memory.availableMem))
-                MemLabel("缓存", formatSize(memory.cachedMem))
+                Text(
+                    "已用  ${formatSize(memory.usedMem)}  / 总计  ${formatSize(memory.totalMem)}",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
 
-            // Swap 行
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // 可用 + 缓存
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("可用  ${formatSize(memory.availableMem)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
+                Text("缓存  ${formatSize(memory.cachedMem)}", fontSize = 12.sp, color = MaterialTheme.colorScheme.outline)
+            }
+
+            // Swap
             if (memory.swapTotal > 0) {
+                Spacer(modifier = Modifier.height(4.dp))
+                HorizontalDivider(thickness = 0.5.dp)
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    MemLabel("Swap总计", formatSize(memory.swapTotal))
-                    MemLabel("Swap已用", formatSize(memory.swapUsed))
-                    MemLabel("Swap空闲", formatSize(memory.swapFree))
-                    Spacer(modifier = Modifier.width(1.dp))
+                    Text(
+                        "Swap  ${formatSize(memory.swapUsed)} / ${formatSize(memory.swapTotal)}",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.outline
+                    )
                 }
             }
         }
     }
 }
 
-@Composable
-private fun MemLabel(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
-        Text(value, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-    }
-}
-
 private fun formatSize(kb: Long): String {
     val mb = kb / 1024
-    return if (mb >= 1024) {
-        "%.1f GB".format(mb / 1024f)
-    } else {
-        "${mb} MB"
-    }
+    return if (mb >= 1024) "%.1f GB".format(mb / 1024f) else "$mb MB"
 }
